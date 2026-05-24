@@ -26,7 +26,6 @@ class CourtAvailabilityQueryDTO(BaseModel):
         day_start_hour: Hour when availability starts.
         day_end_hour: Hour when availability ends.
     """
-
     court_id: UUID = Field(..., description="Court to query.")
     date: Date = Field(..., description="Date for the availability window.")
     slot_minutes: int = Field(
