@@ -1,0 +1,9 @@
+apiVersion: 1
+
+dashboards:
+  - name: matchpoint-dashboards
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
