@@ -52,6 +52,11 @@ class MySQLPlayerRepository(PlayerRepository):
         orm = result.scalar_one_or_none()
         return self._to_domain(orm) if orm else None
 
+    async def list_all(self) -> list[Player]:
+        result = await self._session.execute(select(PlayerORM).order_by(PlayerORM.username))
+        rows = result.scalars().all()
+        return [self._to_domain(orm) for orm in rows]
+
     async def update_restriction(
         self, player_id: UUID, restriction_active: bool, restriction_until: datetime | None
     ) -> Player:

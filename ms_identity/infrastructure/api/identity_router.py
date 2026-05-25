@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from application.dtos.membership_validation_response_dto import (
     MembershipValidationResponseDTO,
 )
+from application.dtos.player_list_item_dto import PlayerListItemDTO
 from application.dtos.player_restriction_dto import PlayerRestrictionDTO
 from application.use_cases.update_player_restriction import UpdatePlayerRestrictionUseCase
 from application.use_cases.validate_membership import ValidateMembershipUseCase
@@ -16,6 +17,7 @@ from infrastructure.api.dependencies import (
     get_update_restriction_use_case,
     get_validate_membership_use_case,
 )
+from infrastructure.observability.metrics import membership_validations_total, restriction_checks_total
 
 
 class RestrictionUpdateDTO(BaseModel):
@@ -32,6 +34,26 @@ class RestrictionUpdateDTO(BaseModel):
 router = APIRouter(prefix="/internal", tags=["Internal"])
 
 
+@router.get("/players", response_model=list[PlayerListItemDTO])
+async def list_players(
+    player_repository: PlayerRepository = Depends(get_player_repository),
+) -> list[PlayerListItemDTO]:
+    """List all players stored in identity."""
+
+    players = await player_repository.list_all()
+    return [
+        PlayerListItemDTO(
+            id=player.id,
+            username=player.username,
+            email=player.email,
+            membership_status=player.membership_status,
+            restriction_active=player.restriction_active,
+            restriction_until=player.restriction_until,
+        )
+        for player in players
+    ]
+
+
 @router.get(
     "/membership/{player_id}/validate",
     response_model=MembershipValidationResponseDTO,
@@ -42,7 +64,9 @@ async def validate_membership(
 ) -> MembershipValidationResponseDTO:
     """Validate membership for a player."""
 
-    return await use_case.execute(player_id)
+    result = await use_case.execute(player_id)
+    membership_validations_total.inc()
+    return result
 
 
 @router.get("/restriction/{player_id}")
@@ -55,6 +79,7 @@ async def get_restriction(
     player = await player_repository.get_by_id(player_id)
     if player is None:
         raise HTTPException(status_code=404, detail="Player not found.")
+    restriction_checks_total.inc()
     return {
         "has_restriction": player.restriction_active,
         "restriction_until": player.restriction_until,
@@ -92,4 +117,28 @@ async def update_restriction(
         restriction_active=updated.restriction_active,
         restriction_until=updated.restriction_until,
     )
+
+
+# Public router (no /internal prefix) for lightweight admin/debug reads
+public_router = APIRouter(tags=["Players"])
+
+
+@public_router.get("/players", response_model=list[PlayerListItemDTO])
+async def public_list_players(
+    player_repository: PlayerRepository = Depends(get_player_repository),
+) -> list[PlayerListItemDTO]:
+    """Public endpoint to list players (intended for debugging/demo)."""
+
+    players = await player_repository.list_all()
+    return [
+        PlayerListItemDTO(
+            id=player.id,
+            username=player.username,
+            email=player.email,
+            membership_status=player.membership_status,
+            restriction_active=player.restriction_active,
+            restriction_until=player.restriction_until,
+        )
+        for player in players
+    ]
 

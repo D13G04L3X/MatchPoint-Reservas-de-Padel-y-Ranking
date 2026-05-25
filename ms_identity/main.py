@@ -8,7 +8,7 @@ from application.use_cases.update_player_restriction import (
 )
 from config import settings
 from infrastructure.api.health_router import router as health_router
-from infrastructure.api.identity_router import router as identity_router
+from infrastructure.api.identity_router import router as identity_router, public_router as identity_public_router
 from infrastructure.messaging.rabbitmq_consumer import RabbitMQIdentityConsumer
 from infrastructure.observability.metrics import MetricsMiddleware, get_metrics_app
 from infrastructure.observability.tracing import configure_tracing
@@ -38,6 +38,7 @@ app = FastAPI(
 	version="1.0.0",
 	docs_url="/docs",
 	redoc_url="/redoc",
+	root_path=settings.ROOT_PATH,
 	lifespan=lifespan,
 )
 
@@ -45,5 +46,6 @@ app.add_middleware(MetricsMiddleware)
 app.mount("/metrics", WSGIMiddleware(get_metrics_app()))
 
 app.include_router(identity_router)
+app.include_router(identity_public_router)
 app.include_router(health_router)
 

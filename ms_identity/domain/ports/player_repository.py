@@ -14,6 +14,10 @@ class PlayerRepository(ABC):
         """Return a player by id, or None if not found."""
 
     @abstractmethod
+    async def list_all(self) -> list[Player]:
+        """Return all players stored in the repository."""
+
+    @abstractmethod
     async def update_restriction(
         self, player_id: UUID, restriction_active: bool, restriction_until: datetime | None
     ) -> Player:
