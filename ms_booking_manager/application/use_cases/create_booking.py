@@ -5,10 +5,11 @@ from domain.models.booking import Booking
 from domain.models.enums import BookingStatus
 from domain.models.value_objects import PlayerId, TimeSlot
 from domain.ports.booking_repository import BookingRepository
+from domain.ports.court_repository import CourtRepository
 from domain.ports.event_publisher import EventPublisher
 from domain.ports.identity_client import IdentityClient
 from domain.ports.ranking_client import RankingClient
-from domain.services.booking_service import BookingDomainService, BookingOverlapError
+from domain.services.booking_service import BookingDomainService, BookingOverlapError, CourtNotFoundError
 from application.dtos.booking_response_dto import BookingResponseDTO
 from application.dtos.create_booking_dto import CreateBookingDTO
 
@@ -19,17 +20,23 @@ class CreateBookingUseCase:
     def __init__(
         self,
         booking_repository: BookingRepository,
+        court_repository: CourtRepository,
         identity_client: IdentityClient,
         ranking_client: RankingClient,
         event_publisher: EventPublisher,
     ) -> None:
         self._booking_repository = booking_repository
+        self._court_repository = court_repository
         self._identity_client = identity_client
         self._ranking_client = ranking_client
         self._event_publisher = event_publisher
 
     async def execute(self, dto: CreateBookingDTO) -> BookingResponseDTO:
         """Create a booking and return the response DTO."""
+
+        court = await self._court_repository.get_by_id(dto.court_id)
+        if court is None or not court.is_active:
+            raise CourtNotFoundError("Court not found.")
 
         slot = TimeSlot(start_time=dto.start_time, end_time=dto.end_time)
         if slot.is_premium():

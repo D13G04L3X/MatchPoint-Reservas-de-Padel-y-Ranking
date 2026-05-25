@@ -25,6 +25,10 @@ class BookingOverlapError(BookingDomainError):
     """Raised when a booking overlaps with an existing reservation."""
 
 
+class CourtNotFoundError(BookingDomainError):
+    """Raised when the requested court does not exist or is inactive."""
+
+
 class BookingDomainService:
     """Pure domain rules for booking validation and decisions."""
 
