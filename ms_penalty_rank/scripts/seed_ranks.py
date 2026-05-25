@@ -40,7 +40,6 @@ async def seed(high_id: str, high_level: float, low_id: str, low_level: float) -
         print("Seeding failed:", e)
         raise
 
-
 def main():
     args = parse_args()
     asyncio.run(seed(args.high_id, args.high_level, args.low_id, args.low_level))

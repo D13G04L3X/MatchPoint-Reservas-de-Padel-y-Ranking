@@ -9,6 +9,7 @@ from aio_pika import ExchangeType, IncomingMessage, RobustChannel, RobustConnect
 
 from config import settings
 from domain.models.enums import PenaltyReason
+from infrastructure.observability.metrics import penalties_applied_total
 
 import logging
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ class RabbitMQPenaltyConsumer:
                 reason=PenaltyReason.LATE_CANCELLATION,
                 event_id=event_id,
             )
+            penalties_applied_total.inc()
             await message.ack()
         except Exception:
             await message.nack(requeue=False)
