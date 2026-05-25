@@ -1,3 +1,4 @@
+from datetime import date as Date, datetime, time, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -5,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.booking import Booking
 from domain.models.enums import BookingStatus
-from domain.models.value_objects import PlayerId, TimeSlot
+from domain.models.value_objects import CLUB_TIMEZONE, PlayerId, TimeSlot
 from domain.ports.booking_repository import BookingRepository
 from infrastructure.persistence.models import BookingORM
 
@@ -60,6 +61,34 @@ class PostgresBookingRepository(BookingRepository):
         result = await self._session.execute(
             select(BookingORM).where(BookingORM.player_id == player_id)
         )
+        return [self._to_domain(orm) for orm in result.scalars().all()]
+
+    async def list_by_date(
+        self,
+        date: Date,
+        *,
+        player_id: UUID | None = None,
+        include_cancelled: bool = False,
+    ) -> list[Booking]:
+        day_start = datetime.combine(date, time.min, tzinfo=CLUB_TIMEZONE)
+        day_end = day_start + timedelta(days=1)
+        stmt = (
+            select(BookingORM)
+            .where(
+                BookingORM.start_time >= day_start,
+                BookingORM.start_time < day_end,
+            )
+            .order_by(BookingORM.start_time)
+        )
+        if player_id is not None:
+            stmt = stmt.where(BookingORM.player_id == player_id)
+        if not include_cancelled:
+            stmt = stmt.where(
+                ~BookingORM.status.in_(
+                    [BookingStatus.CANCELLED_EARLY, BookingStatus.CANCELLED_LATE]
+                )
+            )
+        result = await self._session.execute(stmt)
         return [self._to_domain(orm) for orm in result.scalars().all()]
 
     async def update_status(self, booking_id: UUID, status: BookingStatus) -> Booking:

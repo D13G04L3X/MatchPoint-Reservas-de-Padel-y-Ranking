@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import date as Date
 from uuid import UUID
 
 from domain.models.booking import Booking
@@ -20,6 +21,16 @@ class BookingRepository(ABC):
     @abstractmethod
     async def get_by_player(self, player_id: UUID) -> list[Booking]:
         """Return all bookings for the given player id."""
+
+    @abstractmethod
+    async def list_by_date(
+        self,
+        date: Date,
+        *,
+        player_id: UUID | None = None,
+        include_cancelled: bool = False,
+    ) -> list[Booking]:
+        """Return bookings that start on the given date (club local time)."""
 
     @abstractmethod
     async def update_status(self, booking_id: UUID, status: BookingStatus) -> Booking:
