@@ -77,11 +77,120 @@ def rabbitmq_publish_count():
     try:
         r = httpx.get(url, auth=(RABBITMQ_USER, RABBITMQ_PASS), timeout=5.0)
         if r.status_code == 200:
-            data = r.json()
-            return int(data.get("message_stats", {}).get("publish_in", 0))
+            stats = r.json().get("message_stats") or {}
+            for key in ("publish_in", "publish_out"):
+                if key in stats:
+                    return int(stats[key])
     except Exception:
         pass
     return 0
+
+
+def wait_for_rabbitmq_increase(before: int, timeout: float = 10.0) -> bool:
+    """Return True when exchange publish count increases within timeout."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if rabbitmq_publish_count() > before:
+            return True
+        time.sleep(0.5)
+    return False
+
+
+def list_available_court_ids(client: httpx.Client) -> list[str]:
+    """Return court ids with availability for tomorrow, best first."""
+    try:
+        response = client.get(
+            f"{BOOKING_URL}/courts/availability",
+            params={"date": iso_tomorrow_date()},
+        )
+        if response.status_code != 200:
+            return []
+        courts = response.json().get("courts") or []
+        courts.sort(key=lambda court: court.get("available_slots", 0), reverse=True)
+        return [court["id"] for court in courts]
+    except Exception:
+        return []
+
+
+def create_imminent_booking(
+    client: httpx.Client,
+    court_ids: list[str],
+    player_id: str,
+) -> tuple[str, str] | None:
+    """Create a booking within the next 2 hours; return (booking_id, court_id)."""
+    hour_offsets = (1.0, 1.25, 1.5, 0.75, 1.75)
+    for court_id in court_ids:
+        for offset in hour_offsets:
+            start = datetime.now(timezone.utc) + timedelta(hours=offset)
+            if is_premium_club_hour(start):
+                continue
+            end = start + timedelta(hours=1)
+            payload = {
+                "court_id": court_id,
+                "player_id": player_id,
+                "guest_player_ids": [],
+                "start_time": start.isoformat().replace("+00:00", "Z"),
+                "end_time": end.isoformat().replace("+00:00", "Z"),
+                "is_ranked": False,
+            }
+            try:
+                response = client.post(f"{BOOKING_URL}/bookings", json=payload)
+                if response.status_code == 201:
+                    return response.json().get("id"), court_id
+            except Exception:
+                continue
+    return None
+
+
+def iso_tomorrow_date() -> str:
+    """Return YYYY-MM-DD for tomorrow in America/Bogota."""
+    tomorrow = (datetime.now(CLUB_TZ) + timedelta(days=1)).date()
+    return tomorrow.isoformat()
+
+
+def pick_seeded_court_id(client: httpx.Client) -> str | None:
+    """Return the seeded court with the most free slots for tomorrow."""
+    try:
+        response = client.get(
+            f"{BOOKING_URL}/courts/availability",
+            params={"date": iso_tomorrow_date()},
+        )
+        if response.status_code != 200:
+            return None
+        courts = response.json().get("courts") or []
+        if not courts:
+            return None
+        best = max(courts, key=lambda court: court.get("available_slots", 0))
+        return best["id"]
+    except Exception:
+        return None
+
+
+def pick_available_slot(
+    client: httpx.Client,
+    court_id: str,
+    *,
+    premium: bool | None = None,
+) -> tuple[str, str] | None:
+    """Return (start_time, end_time) ISO strings for the first matching free slot."""
+    try:
+        response = client.get(
+            f"{BOOKING_URL}/courts/{court_id}/availability",
+            params={"date": iso_tomorrow_date()},
+        )
+        if response.status_code != 200:
+            return None
+        for slot in response.json().get("slots") or []:
+            start = datetime.fromisoformat(slot["start_time"].replace("Z", "+00:00"))
+            slot_is_premium = is_premium_club_hour(start)
+            if premium is None or slot_is_premium == premium:
+                start_iso = start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+                end = datetime.fromisoformat(slot["end_time"].replace("Z", "+00:00"))
+                end_iso = end.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+                return start_iso, end_iso
+    except Exception:
+        pass
+    return None
 
 
 def main():
@@ -93,19 +202,46 @@ def main():
     if not ok:
         fail_count += 1
 
-    # Prepare IDs and times
-    COURT_ID = new_uuid()
+    client = httpx.Client(timeout=10.0)
+
+    # Test 2: Courts availability for tomorrow
+    try:
+        r_courts = client.get(
+            f"{BOOKING_URL}/courts/availability",
+            params={"date": iso_tomorrow_date()},
+        )
+        courts = r_courts.json().get("courts") if r_courts.status_code == 200 else []
+        if r_courts.status_code == 200 and len(courts) >= 3:
+            print_result(True, "Courts availability")
+        else:
+            print_result(False, "Courts availability")
+            fail_count += 1
+    except Exception:
+        print_result(False, "Courts availability")
+        fail_count += 1
+
+    COURT_ID = pick_seeded_court_id(client)
+    if not COURT_ID:
+        print_result(False, "Resolve seeded court id")
+        fail_count += 1
+        COURT_ID = new_uuid()
     PLAYER_ID = new_uuid()
     GUEST_ID = new_uuid()
 
-    NON_PREMIUM_START = iso_tomorrow_at_club_hour(10)
-    NON_PREMIUM_END = iso_tomorrow_at_club_hour(11)
-    PREMIUM_START = iso_tomorrow_at_club_hour(19)
-    PREMIUM_END = iso_tomorrow_at_club_hour(20)
-    LATE_START = iso_in_hours(1)
-    LATE_END = iso_in_hours(2)
-
-    client = httpx.Client(timeout=10.0)
+    NON_PREMIUM_SLOT = pick_available_slot(client, COURT_ID, premium=False)
+    PREMIUM_SLOT = pick_available_slot(client, COURT_ID, premium=True)
+    if not NON_PREMIUM_SLOT:
+        print_result(False, "Resolve non-premium slot")
+        fail_count += 1
+        NON_PREMIUM_START = iso_tomorrow_at_club_hour(10)
+        NON_PREMIUM_END = iso_tomorrow_at_club_hour(11)
+    else:
+        NON_PREMIUM_START, NON_PREMIUM_END = NON_PREMIUM_SLOT
+    if not PREMIUM_SLOT:
+        PREMIUM_START = iso_tomorrow_at_club_hour(19)
+        PREMIUM_END = iso_tomorrow_at_club_hour(20)
+    else:
+        PREMIUM_START, PREMIUM_END = PREMIUM_SLOT
 
     # Test 2: Non-premium booking
     payload = {
@@ -126,12 +262,6 @@ def main():
     except Exception:
         print_result(False, "Create non-premium booking")
         fail_count += 1
-
-    booking_id = None
-    try:
-        booking_id = r.json().get("id")
-    except Exception:
-        booking_id = None
 
     # Test 3: Premium booking without membership
     premium_payload = {
@@ -161,71 +291,54 @@ def main():
     if not (RANK_HIGH_PLAYER_ID and RANK_LOW_PLAYER_ID):
         print("SKIPPED - Ranked booking with level diff > 2.0 (no pre-seeded ranks)")
     else:
-        rank_payload = {
-            "court_id": COURT_ID,
-            "player_id": RANK_HIGH_PLAYER_ID,
-            "guest_player_ids": [RANK_LOW_PLAYER_ID],
-            "start_time": NON_PREMIUM_START,
-            "end_time": NON_PREMIUM_END,
-            "is_ranked": True,
-        }
-        try:
-            r3 = client.post(f"{BOOKING_URL}/bookings", json=rank_payload)
-            if r3.status_code == 400:
-                print_result(True, "Ranked booking with level diff > 2.0")
-            else:
+        rank_slot = pick_available_slot(client, COURT_ID, premium=False)
+        if not rank_slot:
+            print("SKIPPED - Ranked booking with level diff > 2.0 (no free slot)")
+        else:
+            rank_start, rank_end = rank_slot
+            rank_payload = {
+                "court_id": COURT_ID,
+                "player_id": RANK_HIGH_PLAYER_ID,
+                "guest_player_ids": [RANK_LOW_PLAYER_ID],
+                "start_time": rank_start,
+                "end_time": rank_end,
+                "is_ranked": True,
+            }
+            try:
+                r3 = client.post(f"{BOOKING_URL}/bookings", json=rank_payload)
+                if r3.status_code == 400:
+                    print_result(True, "Ranked booking with level diff > 2.0")
+                else:
+                    print_result(False, "Ranked booking with level diff > 2.0")
+                    fail_count += 1
+            except Exception:
                 print_result(False, "Ranked booking with level diff > 2.0")
                 fail_count += 1
-        except Exception:
-            print_result(False, "Ranked booking with level diff > 2.0")
-            fail_count += 1
 
     # Test 5: Late cancellation publishes event
-    if not booking_id:
-        print_result(False, "Late cancellation")
-        fail_count += 1
+    court_ids = list_available_court_ids(client) or ([COURT_ID] if COURT_ID else [])
+    late_player_id = new_uuid()
+    imminent = create_imminent_booking(client, court_ids, late_player_id)
+    if not imminent:
+        print("SKIPPED - Late cancellation (no free slot in next 2 hours)")
     else:
-        # Ensure we can create a slot within the next 2 hours outside premium hours.
-        non_premium_offset = None
-        for try_h in (1, 2):
-            candidate = datetime.now(timezone.utc) + timedelta(hours=try_h)
-            if not is_premium_club_hour(candidate):
-                non_premium_offset = try_h
-                break
-        if non_premium_offset is None:
-            print("SKIPPED - Late cancellation (no non-premium slot in next 2 hours)")
-        else:
-            try:
-                late_payload = {
-                    "court_id": COURT_ID,
-                    "player_id": PLAYER_ID,
-                    "guest_player_ids": [],
-                    "start_time": LATE_START,
-                    "end_time": LATE_END,
-                    "is_ranked": False,
-                }
-                r4 = client.post(f"{BOOKING_URL}/bookings", json=late_payload)
-                if r4.status_code != 201:
-                    print_result(False, "Late cancellation")
-                    fail_count += 1
-                else:
-                    late_booking_id = r4.json().get("id")
-                    before_count = rabbitmq_publish_count()
-                    cancel_payload = {"booking_id": late_booking_id, "player_id": PLAYER_ID}
-                    r5 = client.delete(
-                        f"{BOOKING_URL}/bookings/{late_booking_id}",
-                        params={"player_id": PLAYER_ID}
-)
-                    time.sleep(2)
-                    after_count = rabbitmq_publish_count()
-                    if r5.status_code == 200 and after_count > before_count:
-                        print_result(True, "Late cancellation")
-                    else:
-                        print_result(False, "Late cancellation")
-                        fail_count += 1
-            except Exception:
+        late_booking_id, _ = imminent
+        try:
+            before_count = rabbitmq_publish_count()
+            r5 = client.delete(
+                f"{BOOKING_URL}/bookings/{late_booking_id}",
+                params={"player_id": late_player_id},
+            )
+            cancelled = r5.status_code == 200 and r5.json().get("status") == "CANCELLED_LATE"
+            published = wait_for_rabbitmq_increase(before_count)
+            if cancelled and published:
+                print_result(True, "Late cancellation")
+            else:
                 print_result(False, "Late cancellation")
                 fail_count += 1
+        except Exception:
+            print_result(False, "Late cancellation")
+            fail_count += 1
 
     # Test 6: Public ranking
     try:

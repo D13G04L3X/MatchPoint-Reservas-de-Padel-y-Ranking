@@ -92,6 +92,34 @@ docker compose ps
 
 ***
 
+## Observabilidad
+
+### Grafana — Dashboard MatchPoint
+
+Tras levantar Docker Compose, abre Grafana en http://localhost:3000 (`admin` / valor de `GF_SECURITY_ADMIN_PASSWORD` en `.env`, por defecto `admin`).
+
+El dashboard **MatchPoint - Observabilidad** se carga automáticamente desde `monitoring/grafana/dashboards/`. Incluye:
+
+- Tasa de peticiones HTTP y latencia p95 por microservicio
+- Errores 4xx / 5xx
+- Métricas de negocio: reservas creadas, cancelaciones tardías, penalizaciones, fallos premium/ranked, validaciones de membresía
+
+Para generar datos en el dashboard:
+
+```bash
+python scripts/smoke_test.py
+```
+
+### Jaeger — Trazas distribuidas
+
+http://localhost:16686 — cada microservicio exporta trazas OpenTelemetry al iniciar.
+
+### Prometheus — Scraping
+
+Los tres MS exponen `/metrics`. Prometheus los scrapea según `monitoring/prometheus.yml`.
+
+***
+
 ## Health Checks
 
 ```bash
@@ -119,6 +147,12 @@ docker compose exec ms-penalty-rank python scripts/seed_ranks.py
 $env:RANK_HIGH_PLAYER_ID="<id-high>"
 $env:RANK_LOW_PLAYER_ID="<id-low>"
 python scripts/smoke_test.py
+```
+
+Las canchas por defecto se cargan al iniciar MS-BookingManager. Para repetir el seed manualmente:
+
+```bash
+docker compose exec ms-booking-manager python scripts/seed_courts.py
 ```
 
 ***
@@ -168,6 +202,8 @@ matchpoint/
 │   ├── domain/                 #   Entidades y puertos (Hexagonal)
 │   ├── application/            #   Casos de uso
 │   ├── infrastructure/         #   Adaptadores (DB, HTTP, MQ)
+│   ├── scripts/
+│   │   └── seed_courts.py
 │   └── main.py
 │
 ├── ms_identity/                # Síncrono — FastAPI + MySQL
