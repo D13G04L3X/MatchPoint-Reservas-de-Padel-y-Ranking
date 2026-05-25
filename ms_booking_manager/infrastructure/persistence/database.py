@@ -27,7 +27,11 @@ async def init_db() -> None:
     """Create database tables on startup."""
 
     from infrastructure.persistence import models  # noqa: F401
+    from infrastructure.persistence.seed_courts import seed_default_courts
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncSessionLocal() as session:
+        await seed_default_courts(session)
 
