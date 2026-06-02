@@ -8,13 +8,12 @@ from infrastructure.persistence.database import Base
 
 
 class PlayerORM(Base):
-    """SQLAlchemy model for players."""
-
     __tablename__ = "players"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     username: Mapped[str] = mapped_column(String(150), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    level: Mapped[float] = mapped_column(default=0.0)
     membership_status: Mapped[MembershipStatus] = mapped_column(
         SAEnum(MembershipStatus, name="membership_status"), nullable=False
     )

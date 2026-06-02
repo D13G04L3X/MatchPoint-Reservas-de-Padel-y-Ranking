@@ -6,7 +6,7 @@ SQLAlchemy==2.0.30
 aiomysql==0.2.0
 aio-pika==9.4.1
 prometheus-client==0.20.0
-setuptools>=69.0.0
+setuptools==70.3.0
 # Observabilidad — versiones fijas y compatibles entre sí
 opentelemetry-api==1.25.0
 opentelemetry-sdk==1.25.0
