@@ -68,6 +68,8 @@ services:
       - "16686:16686"
       - "4317:4317"
       - "4318:4318"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
     networks:
       - matchpoint-network
 
@@ -179,11 +181,7 @@ services:
       - matchpoint-network
 
   frontend:
-    build:
-      context: ./frontend/src
-      dockerfile: Dockerfile
-    expose:
-      - "80"
+    build: ./frontend
     networks:
       - matchpoint-network
 

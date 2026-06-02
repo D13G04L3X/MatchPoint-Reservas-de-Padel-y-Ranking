@@ -6,7 +6,7 @@ motor==3.4.0
 pymongo==4.7.2
 aio-pika==9.4.1
 prometheus-client==0.20.0
-setuptools>=69.0.0
+setuptools==70.3.0
 # Observabilidad — versiones fijas y compatibles entre sí
 opentelemetry-api==1.25.0
 opentelemetry-sdk==1.25.0
