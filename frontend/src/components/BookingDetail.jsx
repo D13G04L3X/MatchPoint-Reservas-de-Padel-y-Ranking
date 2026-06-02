@@ -5,6 +5,7 @@ import {
   buildCourtNameMap,
   formatCourtName,
   formatDateTime,
+  formatPlayerList,
   formatStatus,
   formatTimeRange,
   formatYesNo,
@@ -18,7 +19,7 @@ function tomorrowDate() {
   return d
 }
 
-function BookingCard({ booking, courtNames, onCancel, cancelling }) {
+function BookingCard({ booking, courtNames, playerMap, onCancel, cancelling }) {
   const isPending = booking.status === 'PENDING'
 
   return (
@@ -36,8 +37,14 @@ function BookingCard({ booking, courtNames, onCancel, cancelling }) {
         <dt>Cancha</dt>
         <dd>{formatCourtName(booking.court_id, courtNames)}</dd>
 
-        <dt>Jugador</dt>
-        <dd className="mono">{booking.player_id}</dd>
+        <dt>Organizador</dt>
+        <dd>{playerMap[booking.player_id] ?? booking.player_id}</dd>
+
+        <dt>Equipo local</dt>
+        <dd>{formatPlayerList(booking.team_local_ids, playerMap)}</dd>
+
+        <dt>Equipo visita</dt>
+        <dd>{formatPlayerList(booking.team_visit_ids, playerMap)}</dd>
 
         <dt>Inicio</dt>
         <dd>{formatDateTime(booking.start_time)}</dd>
@@ -63,7 +70,7 @@ function BookingCard({ booking, courtNames, onCancel, cancelling }) {
   )
 }
 
-export default function BookingDetail() {
+export default function BookingDetail({ activeUserId, playerMap }) {
   const session = loadSession()
   const [selectedDate, setSelectedDate] = useState(
     () => session.lastBookingDate ?? toDateInputValue(tomorrowDate()),
@@ -91,7 +98,10 @@ export default function BookingDetail() {
     setNotice('')
 
     try {
-      const data = await listBookingsByDate(selectedDate, { includeCancelled })
+      const data = await listBookingsByDate(selectedDate, {
+        playerId: activeUserId,
+        includeCancelled,
+      })
       const nextBookings = Array.isArray(data) ? data : []
       setBookings(nextBookings)
 
@@ -112,7 +122,7 @@ export default function BookingDetail() {
     } finally {
       setLoading(false)
     }
-  }, [selectedDate, includeCancelled])
+  }, [selectedDate, includeCancelled, activeUserId])
 
   useEffect(() => {
     loadBookings()
@@ -153,8 +163,7 @@ export default function BookingDetail() {
     <section className="panel">
       <h2>Reservas del día</h2>
       <p className="hint">
-        Todas las reservas activas de la fecha elegida. Las canceladas no ocupan horario en la
-        cancha.
+        Reservas de {playerMap[activeUserId] ?? activeUserId} para la fecha seleccionada.
       </p>
 
       <div className="form">
@@ -208,7 +217,7 @@ export default function BookingDetail() {
                       {formatStatus(item.status)}
                     </span>
                     <span className="booking-item-player">
-                      Jugador: <span className="mono">{item.player_id}</span>
+                      Organizador: {playerMap[item.player_id] ?? item.player_id}
                     </span>
                   </button>
                 </li>
@@ -222,6 +231,7 @@ export default function BookingDetail() {
         <BookingCard
           booking={selectedBooking}
           courtNames={courtNames}
+          playerMap={playerMap}
           onCancel={handleCancel}
           cancelling={cancelling}
         />

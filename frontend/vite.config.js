@@ -8,8 +8,10 @@ export default defineConfig({
     proxy: {
       '/bookings': 'http://localhost',
       '/courts': 'http://localhost',
+      '/identity': 'http://localhost',
       '/penalty': 'http://localhost',
       '/health': 'http://localhost',
+      '/internal': 'http://localhost',
     },
   },
 })

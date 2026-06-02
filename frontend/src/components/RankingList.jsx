@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getRanking } from '../api/matchpoint'
+import { getRanking, getPlayers } from '../api/matchpoint'
 
 export default function RankingList() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [playerMap, setPlayerMap] = useState({})
+
+  useEffect(() => {
+    getPlayers()
+      .then((players) => {
+        const map = {}
+        for (const p of players) map[p.id] = p.username
+        setPlayerMap(map)
+      })
+      .catch(() => {})
+  }, [])
 
   const loadRanking = useCallback(() => {
     setLoading(true)
@@ -51,7 +62,7 @@ export default function RankingList() {
               {entries.map((entry, index) => (
                 <tr key={entry.player_id}>
                   <td>{index + 1}</td>
-                  <td className="mono uuid-cell">{entry.player_id}</td>
+                  <td>{playerMap[entry.player_id] ?? entry.player_id}</td>
                   <td>{entry.level}</td>
                   <td>{entry.wins}</td>
                   <td>{entry.losses}</td>

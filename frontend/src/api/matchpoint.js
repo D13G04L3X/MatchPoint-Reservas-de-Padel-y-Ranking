@@ -8,10 +8,21 @@ async function parseResponse(response) {
   return data
 }
 
-export async function createBooking(payload) {
+function headers(xUserId) {
+  const h = { 'Content-Type': 'application/json' }
+  if (xUserId) h['X-User-Id'] = xUserId
+  return h
+}
+
+export async function getPlayers() {
+  const response = await fetch('/identity/players')
+  return parseResponse(response)
+}
+
+export async function createBooking(payload, xUserId) {
   const response = await fetch('/bookings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: headers(xUserId),
     body: JSON.stringify(payload),
   })
   return parseResponse(response)
@@ -61,5 +72,20 @@ export async function getCourtAvailability(courtId, date) {
 
 export async function getRanking() {
   const response = await fetch('/penalty/ranking')
+  return parseResponse(response)
+}
+
+export async function getPlayerRank(playerId) {
+  const response = await fetch(`/penalty/internal/rank/${playerId}`)
+  return parseResponse(response)
+}
+
+export async function getPlayerBookings(playerId) {
+  const response = await fetch(`/internal/bookings/player/${playerId}`)
+  return parseResponse(response)
+}
+
+export async function getPlayerPenalties(playerId) {
+  const response = await fetch(`/penalty/penalties/${playerId}`)
   return parseResponse(response)
 }

@@ -60,6 +60,11 @@ export function toDatetimeLocal(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+export function formatPlayerList(ids, playerMap = {}) {
+  if (!Array.isArray(ids) || ids.length === 0) return 'No aplica'
+  return ids.map((id) => playerMap[id] ?? id).join(', ')
+}
+
 export function shiftDatetimeLocalToDate(value, dateStr) {
   if (!value || !dateStr) return value
   const [year, month, day] = dateStr.split('-').map(Number)

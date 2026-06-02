@@ -3,6 +3,11 @@ import { getCourtAvailability } from '../api/matchpoint'
 import { userFacingError } from '../api/errors'
 import { formatTime, toDatetimeLocal } from '../utils/format'
 
+function isPremiumSlot(startTime) {
+  const hour = new Date(startTime).getHours()
+  return hour >= 18 && hour < 23
+}
+
 export default function CourtAvailability({
   courtId,
   date,
@@ -10,6 +15,7 @@ export default function CourtAvailability({
   selectedEnd,
   refreshKey = 0,
   onSelectSlot,
+  membershipExpired = false,
 }) {
   const [slots, setSlots] = useState([])
   const [loading, setLoading] = useState(false)
@@ -118,11 +124,17 @@ export default function CourtAvailability({
             <div className="slot-grid">
               {slots.map((slot) => {
                 const key = `${slot.start_time}-${slot.end_time}`
+                const premium = isPremiumSlot(slot.start_time)
+                const disabled = premium && membershipExpired
+                const classes = ['slot-btn']
+                if (isSelected(slot)) classes.push('selected')
+                if (premium) classes.push('premium')
                 return (
                   <button
                     key={key}
                     type="button"
-                    className={isSelected(slot) ? 'slot-btn selected' : 'slot-btn'}
+                    className={classes.join(' ')}
+                    disabled={disabled}
                     onClick={() => handleSelect(slot)}
                   >
                     {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
