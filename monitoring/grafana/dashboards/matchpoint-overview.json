@@ -43,7 +43,7 @@
       "type": "row"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -68,7 +68,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -93,7 +93,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -118,7 +118,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -150,7 +150,7 @@
       "type": "row"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -182,7 +182,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -210,7 +210,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -238,7 +238,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -266,7 +266,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -294,7 +294,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -322,7 +322,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -365,6 +365,93 @@
       ],
       "title": "Actividad de negocio (tasa)",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
+      "id": 102,
+      "title": "Salud y trazabilidad",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red", "index": 0, "text": "DOWN" } }, "type": "value" },
+            { "options": { "1": { "color": "green", "index": 1, "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 12, "x": 0, "y": 30 },
+      "id": 12,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "up{job=~\"ms-.*\"}",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Targets Prometheus (microservicios)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 12, "x": 12, "y": 30 },
+      "id": 13,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "rate(restriction_checks_total{job=\"ms-identity\"}[5m])",
+          "legendFormat": "Consultas restricción/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(membership_validations_total{job=\"ms-identity\"}[5m])",
+          "legendFormat": "Validaciones membresía/s",
+          "refId": "B"
+        }
+      ],
+      "title": "MS-Identity — actividad",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 35 },
+      "id": 14,
+      "options": {
+        "code": { "language": "plaintext", "showLineNumbers": false, "showMiniMap": false },
+        "content": "## Trazabilidad distribuida (Jaeger)\n\nCada petición HTTP genera trazas OpenTelemetry exportadas a **Jaeger** (`OTEL_EXPORTER_OTLP_ENDPOINT`).\n\nAbre [Jaeger UI](http://localhost:16686) → Service: `ms-booking-manager` | `ms-identity` | `ms-penalty-rank` → **Find Traces**.\n\nFlujo típico: reserva premium → BookingManager → Identity; cancelación tardía → Booking → RabbitMQ → PenaltyRank → Identity.",
+        "mode": "markdown"
+      },
+      "title": "Guía Jaeger",
+      "type": "text"
     }
   ],
   "refresh": "10s",
@@ -376,5 +463,6 @@
   "timezone": "browser",
   "title": "MatchPoint - Observabilidad",
   "uid": "matchpoint-overview",
-  "version": 1
+  "version": 2
 }
+

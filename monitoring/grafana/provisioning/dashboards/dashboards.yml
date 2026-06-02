@@ -1,9 +1,13 @@
 apiVersion: 1
 
-dashboards:
-  - name: matchpoint-dashboards
+providers:
+  - name: MatchPoint
+    orgId: 1
+    folder: MatchPoint
     type: file
     disableDeletion: false
     editable: true
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
     options:
       path: /var/lib/grafana/dashboards
