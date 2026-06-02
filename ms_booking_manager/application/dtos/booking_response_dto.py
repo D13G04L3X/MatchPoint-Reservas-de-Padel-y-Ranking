@@ -13,7 +13,9 @@ class BookingResponseDTO(BaseModel):
     Fields:
         id: Unique identifier for the booking.
         court_id: Court where the booking occurs.
-        player_id: Player who owns the booking.
+        player_id: Organizer who owns the booking.
+        team_local_ids: Local team players (2) including organizer.
+        team_visit_ids: Visiting team players (2) for ranked bookings.
         status: Current booking status.
         is_premium: True when the booking starts in premium hours.
         is_ranked: True when the booking is ranked.
@@ -24,7 +26,13 @@ class BookingResponseDTO(BaseModel):
 
     id: UUID = Field(..., description="Unique identifier for the booking.")
     court_id: UUID = Field(..., description="Court where the booking occurs.")
-    player_id: UUID = Field(..., description="Player who owns the booking.")
+    player_id: UUID = Field(..., description="Organizer who owns the booking.")
+    team_local_ids: list[UUID] = Field(
+        ..., description="Local team player ids (2) including organizer."
+    )
+    team_visit_ids: list[UUID] | None = Field(
+        default=None, description="Visiting team player ids (2) for ranked bookings."
+    )
     status: BookingStatus = Field(..., description="Current booking status.")
     is_premium: bool = Field(..., description="True when booking is in premium hours.")
     is_ranked: bool = Field(..., description="True when the booking is ranked.")
@@ -40,6 +48,12 @@ class BookingResponseDTO(BaseModel):
             id=booking.id,
             court_id=booking.court_id,
             player_id=booking.player_id.value,
+            team_local_ids=[player_id.value for player_id in booking.team_local_ids],
+            team_visit_ids=(
+                [player_id.value for player_id in booking.team_visit_ids]
+                if booking.team_visit_ids is not None
+                else None
+            ),
             status=booking.status,
             is_premium=booking.is_premium,
             is_ranked=booking.is_ranked,

@@ -22,7 +22,12 @@ class PostgresBookingRepository(BookingRepository):
             id=orm.id,
             court_id=orm.court_id,
             player_id=PlayerId(orm.player_id),
-            guest_player_ids=[PlayerId(value) for value in orm.guest_player_ids],
+            team_local_ids=[PlayerId(value) for value in orm.team_local_ids],
+            team_visit_ids=(
+                [PlayerId(value) for value in orm.team_visit_ids]
+                if orm.team_visit_ids
+                else None
+            ),
             start_time=orm.start_time,
             end_time=orm.end_time,
             status=orm.status,
@@ -35,7 +40,12 @@ class PostgresBookingRepository(BookingRepository):
             id=booking.id,
             court_id=booking.court_id,
             player_id=booking.player_id.value,
-            guest_player_ids=[guest.value for guest in booking.guest_player_ids],
+            team_local_ids=[player.value for player in booking.team_local_ids],
+            team_visit_ids=(
+                [player.value for player in booking.team_visit_ids]
+                if booking.team_visit_ids is not None
+                else None
+            ),
             start_time=booking.start_time,
             end_time=booking.end_time,
             status=booking.status,

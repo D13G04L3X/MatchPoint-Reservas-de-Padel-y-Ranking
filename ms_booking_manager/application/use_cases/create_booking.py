@@ -47,7 +47,7 @@ class CreateBookingUseCase:
             )
 
         if dto.is_ranked:
-            player_ids = [dto.player_id] + list(dto.guest_player_ids)
+            player_ids = dto.team_local_ids + list(dto.team_visit_ids or [])
             levels = await self._ranking_client.get_players_levels(player_ids)
             BookingDomainService.validate_ranked_levels(levels)
 
@@ -59,7 +59,12 @@ class CreateBookingUseCase:
             id=uuid4(),
             court_id=dto.court_id,
             player_id=PlayerId(dto.player_id),
-            guest_player_ids=[PlayerId(player_id) for player_id in dto.guest_player_ids],
+            team_local_ids=[PlayerId(player_id) for player_id in dto.team_local_ids],
+            team_visit_ids=(
+                [PlayerId(player_id) for player_id in dto.team_visit_ids]
+                if dto.team_visit_ids is not None
+                else None
+            ),
             start_time=dto.start_time,
             end_time=dto.end_time,
             status=BookingStatus.PENDING,

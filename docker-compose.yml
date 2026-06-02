@@ -178,6 +178,15 @@ services:
     networks:
       - matchpoint-network
 
+  frontend:
+    build:
+      context: ./frontend/src
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    networks:
+      - matchpoint-network
+
   nginx:
     image: nginx:1.25-alpine
     ports:
@@ -187,6 +196,8 @@ services:
     depends_on:
       ms-booking-manager:
         condition: service_healthy
+      frontend:
+        condition: service_started
     networks:
       - matchpoint-network
 

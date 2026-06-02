@@ -21,8 +21,11 @@ class BookingORM(Base):
     player_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), index=True, nullable=False
     )
-    guest_player_ids: Mapped[list[UUID]] = mapped_column(
-        ARRAY(PG_UUID(as_uuid=True)), default=list, nullable=False
+    team_local_ids: Mapped[list[UUID]] = mapped_column(
+        ARRAY(PG_UUID(as_uuid=True)), nullable=False
+    )
+    team_visit_ids: Mapped[list[UUID] | None] = mapped_column(
+        ARRAY(PG_UUID(as_uuid=True)), nullable=True
     )
     start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True, nullable=False
