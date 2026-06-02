@@ -120,40 +120,42 @@ Los tres MS exponen `/metrics`. Prometheus los scrapea según `monitoring/promet
 
 ***
 
-## Health Checks
+## Seeders (Auto-Seed al Arrancar)
+
+Los tres microservicios siembran datos de prueba automáticamente al iniciar el contenedor. No hace falta ejecutar nada manual.
+
+| Microservicio | Datos que siembra |
+|---------------|-------------------|
+| MS-Identity | 6 jugadores con membresías (`seed_players.py`) |
+| MS-BookingManager | 3 canchas (`seed_courts.py`) |
+| MS-PenaltyRank | Niveles de ranking para los 6 jugadores (`seed_ranks.py`) |
+
+Los UUIDs son **deterministas** y coinciden con los valores por defecto del smoke test:
+
+| Jugador | UUID | Nivel | Membresía |
+|---------|------|-------|-----------|
+| carlos_andrade | `258eddc0-881a-4a95-a89d-fb369d526ff3` | 5.0 | PREMIUM |
+| ana_garcia | `365a0b54-0c23-4c4a-8c08-0bf13a23c202` | 4.5 | PREMIUM |
+| pedro_ruiz | `7a8b9c0d-1e2f-3a4b-5c6d-7e8f9a0b1c2d` | 4.8 | PREMIUM |
+| laura_mendez | `5caea60a-3582-40ae-a9e0-d83def672f4d` | 3.0 | BASIC |
+| mario_vega | `82d54dde-e2ff-4732-9e20-9d724fe47005` | 6.2 | EXPIRED |
+| sofia_torres | `4dd9cff3-bb91-4b43-93c8-1b221a7669ab` | 4.0 | PREMIUM |
+
+Si necesitas reseed manual (ej. tras limpiar la base):
 
 ```bash
-curl http://localhost/health      # BookingManager
-curl http://localhost:8082/health # Identity
-curl http://localhost:8083/health # PenaltyRank
+docker compose exec ms-identity python scripts/seed_players.py
+docker compose exec ms-penalty-rank python scripts/seed_ranks.py
 ```
 
-***
-
-## Smoke Test
+### Smoke test
 
 ```bash
 pip install httpx
 python scripts/smoke_test.py
 ```
 
-Para habilitar el test de reserva Ranked:
-
-```bash
-# 1. Seed de datos de ranking
-docker compose exec ms-penalty-rank python scripts/seed_ranks.py
-
-# 2. Exportar los IDs generados y correr el test
-$env:RANK_HIGH_PLAYER_ID="<id-high>"
-$env:RANK_LOW_PLAYER_ID="<id-low>"
-python scripts/smoke_test.py
-```
-
-Las canchas por defecto se cargan al iniciar MS-BookingManager. Para repetir el seed manualmente:
-
-```bash
-docker compose exec ms-booking-manager python scripts/seed_courts.py
-```
+> Los UUIDs coinciden con los defaults del smoke test, así que no requiere variables de entorno.
 
 ***
 
